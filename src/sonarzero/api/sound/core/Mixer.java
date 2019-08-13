@@ -40,7 +40,6 @@ import sonarzero.api.sound.player.Player;
 public class Mixer {
 	
 	private  List<MusicReference> musics;
-	private  List<SoundReference> sounds;
 	private double globalVolume;
 	private  int[] dataBuf; //buffer for reading sound data
 	
@@ -48,8 +47,7 @@ public class Mixer {
 	 * Construct a new Mixer for TinySound system.
 	 */
 	public Mixer() {
-		this.musics = new ArrayList<MusicReference>();
-		this.sounds = new ArrayList<SoundReference>();
+		this.musics = new ArrayList<>();
 		this.globalVolume = 1.0;
 		this.dataBuf = new int[2]; //2-channel
 	}
@@ -89,14 +87,6 @@ public class Mixer {
 	}
 	
 	/**
-	 * Registers a SoundReference with this Mixer.
-	 * @param sound SoundReference to be registered
-	 */
-	public synchronized void registerSoundReference(SoundReference sound) {
-		this.sounds.add(sound);
-	}
-	
-	/**
 	 * Unregisters a MusicReference with this Mixer.
 	 * @param music MusicReference to be unregistered
 	 */
@@ -105,33 +95,10 @@ public class Mixer {
 	}
 	
 	/**
-	 * Unregisters all SoundReferences with a given soundID.
-	 * @param soundID ID of SoundReferences to be unregistered
-	 */
-	public synchronized void unRegisterSoundReference(int soundID) {
-		//removal working backward is easier
-		for (int i = this.sounds.size() - 1; i >= 0; i--) {
-			if (this.sounds.get(i).getSoundID() == soundID) {
-				this.sounds.remove(i).dispose();
-			}
-		}
-	}
-	
-	/**
 	 * Unregister all Music registered with this Mixer.
 	 */
 	public synchronized void clearMusic() {
 		this.musics.clear();
-	}
-	
-	/**
-	 * Unregister all Sounds registered with this Mixer.
-	 */
-	public synchronized void clearSounds() {
-            this.sounds.forEach((s) -> {
-                s.dispose();
-            });
-		this.sounds.clear();
 	}
 	
 	/**
@@ -182,46 +149,10 @@ public class Mixer {
 					bytesRead = true;
 				}
                                 Player.getMusicListeners().forEach(listener->{
-                                    listener.//Crear geters en clases que instancien en interfaces
+                                    listener.onChangeTime(music, music.getPan());
                                 });
 			}
-			//then go through all the sounds (backwards to remove completed)
-			for (int s = this.sounds.size() - 1; s >= 0; s--) {
-				SoundReference sound = this.sounds.get(s);
-				//are there bytes available
-				if (sound.bytesAvailable() > 0) {
-					//add this sound to the mix by volume (and global volume)
-					sound.nextTwoBytes(this.dataBuf, false);
-					double volume = sound.getVolume() * this.globalVolume;
-					double leftCurr = (this.dataBuf[0] * volume);
-					double rightCurr = (this.dataBuf[1] * volume);
-					//do panning
-					//do panning
-					double pan = sound.getPan();
-					if (pan != 0.0) {
-						double ll = (pan <= 0.0) ? 1.0 : (1.0 - pan);
-						double lr = (pan <= 0.0) ? Math.abs(pan) : 0.0;
-						double rl = (pan >= 0.0) ? pan : 0.0;
-						double rr = (pan >= 0.0) ? 1.0 : (1.0 - Math.abs(pan));
-						double tmpL = (ll * leftCurr) + (lr * rightCurr);
-						double tmpR = (rl * leftCurr) + (rr * rightCurr);
-						leftCurr = tmpL;
-						rightCurr = tmpR;
-					}
-					//update the final left and right channels
-					leftValue += leftCurr;
-					rightValue += rightCurr;
-					//we know we aren't done yet now
-					bytesRead = true;
-					//remove the reference if done
-					if (sound.bytesAvailable() <= 0) {
-						this.sounds.remove(s).dispose();
-					}
-				}
-				else { //otherwise remove this reference
-					this.sounds.remove(s).dispose();
-				}
-			}
+                        
 			//if we actually read bytes, store in the buffer
 			if (bytesRead) {
 				int finalLeftValue = (int)leftValue;
@@ -263,22 +194,6 @@ public class Mixer {
 			if (music.getPlaying() && music.bytesAvailable() > 0) {
 				//skip the bytes
 				music.skipBytes(numBytes);
-			}
-		}
-		//then go through all the sounds (backwards to remove completed)
-		for (int s = this.sounds.size() - 1; s >= 0; s--) {
-			SoundReference sound = this.sounds.get(s);
-			//are there bytes available
-			if (sound.bytesAvailable() > 0) {
-				//skip the bytes
-				sound.skipBytes(numBytes);
-				//remove the reference if done
-				if (sound.bytesAvailable() <= 0) {
-					this.sounds.remove(s).dispose();
-				}
-			}
-			else { //otherwise remove this reference
-				this.sounds.remove(s).dispose();
 			}
 		}
 	}

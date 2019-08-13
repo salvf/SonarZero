@@ -184,8 +184,7 @@ public class MemMusic implements Music {
 	public int getLoopPositionByFrame() {
 		int bytesPerChannelForFrame = Player.FORMAT.getFrameSize() /
 			Player.FORMAT.getChannels();
-		long byteIndex = this.reference.getLoopPosition();
-		return (int)(byteIndex / bytesPerChannelForFrame);
+		return (int)(this.reference.getLoopPosition() / bytesPerChannelForFrame);
 	}
         
         /**
@@ -196,8 +195,7 @@ public class MemMusic implements Music {
 	public int getCurrentPositionByFrame() {
 		int bytesPerChannelForFrame = Player.FORMAT.getFrameSize() /
 			Player.FORMAT.getChannels();
-		long byteIndex = this.reference.getPosition();
-		return (int)(byteIndex / bytesPerChannelForFrame);
+		return (int)(this.reference.getPosition() / bytesPerChannelForFrame);
 	}
         
         /**
@@ -208,8 +206,7 @@ public class MemMusic implements Music {
 	public double getCurrentPositionBySeconds() {
 		int bytesPerChannelForFrame = Player.FORMAT.getFrameSize() /
 			Player.FORMAT.getChannels();
-		long byteIndex = this.reference.getPosition();
-		return (byteIndex / (Player.FORMAT.getFrameRate() *
+		return (this.reference.getPosition() / (Player.FORMAT.getFrameRate() *
 				bytesPerChannelForFrame));
 	}
         
@@ -219,7 +216,7 @@ public class MemMusic implements Music {
 	 */
         @Override
         public double getTotalSeconds(){
-            return (ais.getFrameLength()+0.0) / Player.FORMAT.getFrameRate();
+            return ((this.left.length/2) / Player.FORMAT.getFrameRate() ); 
         }
 	
 	/**
@@ -230,8 +227,7 @@ public class MemMusic implements Music {
 	public double getLoopPositionBySeconds() {
 		int bytesPerChannelForFrame = Player.FORMAT.getFrameSize() /
 			Player.FORMAT.getChannels();
-		long byteIndex = this.reference.getLoopPosition();
-		return (byteIndex / (Player.FORMAT.getFrameRate() *
+		return (this.reference.getLoopPosition() / (Player.FORMAT.getFrameRate() *
 				bytesPerChannelForFrame));
 	}
 	

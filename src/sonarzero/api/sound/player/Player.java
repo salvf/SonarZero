@@ -25,6 +25,7 @@ package sonarzero.api.sound.player;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -44,12 +45,10 @@ import javax.sound.sampled.UnsupportedAudioFileException;
 
 import sonarzero.api.sound.core.ByteList;
 import sonarzero.api.sound.core.MemMusic;
-import sonarzero.api.sound.core.MemSound;
 import sonarzero.api.sound.core.Mixer;
 import sonarzero.api.sound.core.MusicListener;
 import sonarzero.api.sound.core.StreamInfo;
 import sonarzero.api.sound.core.StreamMusic;
-import sonarzero.api.sound.core.StreamSound;
 import sonarzero.api.sound.core.UpdateRunner;
 
 
@@ -135,7 +134,7 @@ public class Player{
         }
 	/**
 	 * Alternative function to initialize Player which should only be used by
- those very familiar with the Java Sound API.  This function allows the
+         * those very familiar with the Java Sound API.  This function allows the
 	 * line that is used for audio playback to be opened on a specific Mixer.
 	 * @param info the Mixer.Info representing the desired Mixer
 	 * @throws LineUnavailableException if a Line is not available from the
@@ -196,7 +195,6 @@ public class Player{
 		Player.outLine.stop();
 		Player.outLine.flush();
 		Player.mixer.clearMusic();
-		Player.mixer.clearSounds();
 		Player.mixer = null;
 	}
 	
@@ -318,6 +316,67 @@ public class Player{
 	public static Music loadMusic(URL url) {
 		return Player.loadMusic(url, false);
 	}
+        
+        /**
+	 * Load a Music by a URL.
+         * @param baos the ByteArrayOutputStream of the Music
+	 * @param streamFromFile true if this Music should be streamed from a
+	 * temporary file to reduce memory overhead
+	 * @return Music from URL as specified, null if not found/loaded
+	 */
+	public static Music loadMusic(ByteArrayOutputStream baos, boolean streamFromFile) {
+		//check if the system is initialized
+		if (!Player.inited) {
+			System.err.println("TinySound not initialized!");
+			return null;
+		}
+		//check for failure
+		if (baos == null) {
+			return null;
+		}
+		//get a valid stream of audio data
+		AudioInputStream audioStream = Player.getValidAudioStream(baos);
+		//check for failure
+		if (audioStream == null) {
+			return null;
+		}
+                
+                /*WaveFileWriter wav= new WaveFileWriter();
+                wav.write(AudioSystem.getAudioInputStream(url), 
+                        AudioFileFormat.Type.WAVE, 
+                        new File(url.toURI()));
+                */
+                
+                
+		//try to read all the bytes
+		byte[][] data = Player.readAllBytes(audioStream);
+		//check for failure
+		if (data == null) {
+			return null;
+		}
+		//handle differently if streaming from a file
+		if (streamFromFile) {
+			StreamInfo info = Player.createFileStream(data);
+			//check for failure
+			if (info == null) {
+				return null;
+			}
+			//try to create it
+			StreamMusic sm = null;
+			try {
+				sm = new StreamMusic(info.URL, info.NUM_BYTES_PER_CHANNEL,
+						Player.mixer, audioStream);
+			} catch (IOException e) {
+				System.err.println("Failed to create StreamMusic!");
+			}
+			return sm;
+		}
+                listeners.forEach(listener->{
+                    listener.onChangeStatus("Loaded");
+                });
+		//construct the Music object and register it with the mixer
+		return new MemMusic(data[0], data[1], Player.mixer, audioStream);
+	}
 	
 	/**
 	 * Load a Music by a URL.
@@ -379,147 +438,7 @@ public class Player{
 		//construct the Music object and register it with the mixer
 		return new MemMusic(data[0], data[1], Player.mixer, audioStream);
 	}
-	
-	/**
-	 * Load a Sound by a resource name.  The resource must be on the classpath
-	 * for this to work.  This will store audio data in memory.
-	 * @param name name of the Sound resource
-	 * @return Sound resource as specified, null if not found/loaded
-	 */
-	public static Sound loadSound(String name) {
-		return Player.loadSound(name, false);
-	}
-	
-	/**
-	 * Load a Sound by a resource name.  The resource must be on the classpath
-	 * for this to work.
-	 * @param name name of the Sound resource
-	 * @param streamFromFile true if this Music should be streamed from a
-	 * temporary file to reduce memory overhead
-	 * @return Sound resource as specified, null if not found/loaded
-	 */
-	public static Sound loadSound(String name, boolean streamFromFile) {
-		//check if the system is initialized
-		if (!Player.inited) {
-			System.err.println("TinySound not initialized!");
-			return null;
-		}
-		//check for failure
-		if (name == null) {
-			return null;
-		}
-		//check for correct naming
-		if (!name.startsWith("/")) {
-			name = "/" + name;
-		}
-		URL url = Player.class.getResource(name);
-		//check for failure to find resource
-		if (url == null) {
-			System.err.println("Unable to find resource " + name + "!");
-			return null;
-		}
-		return Player.loadSound(url, streamFromFile);
-
-	}
-	
-	/**
-	 * Load a Sound by a File.  This will store audio data in memory.
-	 * @param file the Sound file to load
-	 * @return Sound from file as specified, null if not found/loaded
-	 */
-	public static Sound loadSound(File file) {
-		return Player.loadSound(file, false);
-	}
-	
-	/**
-	 * Load a Sound by a File.
-	 * @param file the Sound file to load
-	 * @param streamFromFile true if this Music should be streamed from a
-	 * temporary file to reduce memory overhead
-	 * @return Sound from file as specified, null if not found/loaded
-	 */
-	public static Sound loadSound(File file, boolean streamFromFile) {
-		//check if the system is initialized
-		if (!Player.inited) {
-			System.err.println("TinySound not initialized!");
-			return null;
-		}
-		//check for failure
-		if (file == null) {
-			return null;
-		}
-		URL url = null;
-		try {
-			url = file.toURI().toURL();
-		} catch (MalformedURLException e) {
-			System.err.println("Unable to find file " + file + "!");
-			return null;
-		}
-		return Player.loadSound(url, streamFromFile);
-	}
-	
-	/**
-	 * Load a Sound by a URL.  This will store audio data in memory.
-	 * @param url the URL of the Sound
-	 * @return Sound from URL as specified, null if not found/loaded
-	 */
-	public static Sound loadSound(URL url) {
-		return Player.loadSound(url, false);
-	}
-	
-	/**
-	 * Load a Sound by a URL.  This will store audio data in memory.
-	 * @param url the URL of the Sound
-	 * @param streamFromFile true if this Music should be streamed from a
-	 * temporary file to reduce memory overhead
-	 * @return Sound from URL as specified, null if not found/loaded
-	 */
-	public static Sound loadSound(URL url, boolean streamFromFile) {
-		//check if the system is initialized
-		if (!Player.inited) {
-			System.err.println("TinySound not initialized!");
-			return null;
-		}
-		//check for failure
-		if (url == null) {
-			return null;
-		}
-		//get a valid stream of audio data
-		AudioInputStream audioStream = Player.getValidAudioStream(url);
-		//check for failure
-		if (audioStream == null) {
-			return null;
-		}
-		//try to read all the bytes
-		byte[][] data = Player.readAllBytes(audioStream);
-		//check for failure
-		if (data == null) {
-			return null;
-		}
-		//handle differently if streaming from file
-		if (streamFromFile) {
-			StreamInfo info = Player.createFileStream(data);
-			//check for failure
-			if (info == null) {
-				return null;
-			}
-			//try to create it
-			StreamSound ss = null;
-			try {
-				ss = new StreamSound(info.URL, info.NUM_BYTES_PER_CHANNEL,
-						Player.mixer, Player.soundCount);
-				Player.soundCount++;
-			} catch (IOException e) {
-				System.err.println("Failed to create StreamSound!");
-			}
-			return ss;
-		}
-		//construct the Sound object
-		Player.soundCount++;
-		return new MemSound(data[0], data[1], Player.mixer,
-				Player.soundCount);
-	}
-	
+		
 	/**
 	 * Reads all of the bytes from an AudioInputStream.
 	 * @param stream the stream to read
@@ -605,6 +524,96 @@ public class Player{
 			try { stream.close(); } catch (IOException e) {}
 		}
 		return data;
+	}
+        
+        /**
+	 * Gets and AudioInputStream in the Player system format.
+	 * @param out ByteArrayOutputStream of the resource
+	 * @return the specified stream as an AudioInputStream stream, null if
+	 * failure
+	 */
+	public static AudioInputStream getValidAudioStream(ByteArrayOutputStream out) {
+		AudioInputStream audioStream = null;
+		try {
+                        File f= File.createTempFile("sonartemp", "wav");
+                        OutputStream outputStream = new FileOutputStream (f); 
+                        out.writeTo(outputStream);
+			audioStream = AudioSystem.getAudioInputStream(f);
+                        System.out.println(f.getAbsolutePath());
+                        f.deleteOnExit();
+			AudioFormat streamFormat = audioStream.getFormat();
+			//1-channel can also be treated as stereo
+			AudioFormat mono16 = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED,
+					44100, 16, 1, 2, 44100, false);
+			//1 or 2 channel 8-bit may be easy to convert
+			AudioFormat mono8 =	new AudioFormat(AudioFormat.Encoding.PCM_SIGNED,
+					44100, 8, 1, 1, 44100, false);
+			AudioFormat stereo8 =
+				new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 44100, 8, 2, 2,
+					44100, false);
+			//now check formats (attempt conversion as needed)
+			if (streamFormat.matches(Player.FORMAT) ||
+					streamFormat.matches(mono16)) {
+                            System.out.println("1 Format"+ streamFormat.matches(Player.FORMAT)+"  mono16 "+streamFormat.matches(mono16));
+				return audioStream;
+			} //check conversion to Player format
+			else if (AudioSystem.isConversionSupported(Player.FORMAT,
+					streamFormat)) {
+                            System.out.println("To FORMAT Convert");
+				audioStream = AudioSystem.getAudioInputStream(Player.FORMAT,
+						audioStream);
+			} //check conversion to mono alternate
+			else if (AudioSystem.isConversionSupported(mono16, streamFormat)) {
+                            System.out.println("To mono16 Convert");
+				audioStream = AudioSystem.getAudioInputStream(mono16,
+						audioStream);
+			} //try convert from 8-bit, 2-channel
+			else if (streamFormat.matches(stereo8) ||
+					AudioSystem.isConversionSupported(stereo8, streamFormat)) {
+                            System.out.println("2  stereo8 "+streamFormat.matches(stereo8));
+				//convert to 8-bit stereo first?
+				if (!streamFormat.matches(stereo8)) {
+					audioStream = AudioSystem.getAudioInputStream(stereo8,
+							audioStream);
+				}
+				audioStream = Player.convertStereo8Bit(audioStream);
+			} //try convert from 8-bit, 1-channel
+			else if (streamFormat.matches(mono8) ||
+					AudioSystem.isConversionSupported(mono8, streamFormat)) {
+                            System.out.println("2  mono8 "+streamFormat.matches(mono8));
+				//convert to 8-bit mono first?
+				if (!streamFormat.matches(mono8)) {
+					audioStream = AudioSystem.getAudioInputStream(mono8,
+							audioStream);
+				}
+				audioStream = Player.convertMono8Bit(audioStream);
+			} //it's time to give up
+			else {
+				System.err.println("Unable to convert audio resource!");
+				System.err.println(out);
+				System.err.println(streamFormat);
+				audioStream.close();
+				return null;
+			}
+			//check the frame length
+			long frameLength = audioStream.getFrameLength();
+			//too long
+			if (frameLength > Integer.MAX_VALUE) {
+				System.err.println("Audio resource too long!");
+				return null;
+			}
+		}
+		catch (UnsupportedAudioFileException e) {
+			System.err.println("Unsupported audio resource!\n" +
+					e.getMessage());
+			return null;
+		}
+		catch (IOException e) {
+			System.err.println("Error getting resource stream!\n" +
+					e.getMessage());
+			return null;
+		}
+		return audioStream;
 	}
 	
 	/**
@@ -933,6 +942,36 @@ public class Player{
 		//no good
 		return null;
 	}
-
-	
+        
+        public static class Time{
+            private int MINITES=0;
+            private int SECONDS=0;
+            
+            public static Time toMinutes(double seconds){
+                double auxsec=seconds;
+                int presec= (int)auxsec/60;
+                int sec =((int)auxsec>=60)?(int)auxsec-(60*presec):(int)auxsec;
+                int min=presec;
+                return new Time(min,sec);
+            }
+            
+            private Time(int m, int s){
+                this.MINITES = m;
+                this.SECONDS = s;
+            }
+            
+            public int getMinutes(){
+                return MINITES;
+            }
+            
+            public int getSeconds(){
+                return SECONDS;
+            }
+            
+            @Override
+            public String toString(){
+                return MINITES+":"+SECONDS;
+            }
+        }
+       
 }
