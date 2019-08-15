@@ -1,14 +1,11 @@
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.UnsupportedAudioFileException;
-import static sonarzero.api.sound.core.Converter.convertFrom;
 import sonarzero.api.sound.core.MusicListener;
 import sonarzero.api.sound.player.Music;
 import sonarzero.api.sound.player.Player;
@@ -29,35 +26,28 @@ public class NewJFrame extends javax.swing.JFrame implements MusicListener{
      * Creates new form NewJFrame
      */
     ArrayList<Music> lista= new ArrayList<>();
-    File file=new File("C:\\Users\\terro\\Desktop\\AudioVSTs\\wav\\mp3\\Waltz - Percussions Section.mp3");
+    
     public NewJFrame() throws IOException, UnsupportedAudioFileException {
         Player.addMusicListener(this);
         Player.init();
-            final ByteArrayOutputStream output = new ByteArrayOutputStream(); 
-            convertFrom(AudioSystem.getAudioInputStream(file)).
-                    withFormat(new AudioFormat(44100, 16, 2, true, false)).to(output);
-            
-            lista.add(Player.loadMusic(output, false));
-
-//			Files.write(Paths.get("/tmp/output.wav"), output.toByteArray());
 
        // lista.add(Player.loadMusic(new File("C:\\Users\\terro\\Desktop\\AudioVSTs\\wav\\Waltz - Percussions Section.wav")));                
-       // lista.add(Player.loadMusic(new File("C:\\Users\\terro\\Desktop\\AudioVSTs\\wav\\mp3\\Waltz - Percussions Section.mp3")));                
-        /*lista.add(Player.loadMusic(new File("C:\\Users\\terro\\Desktop\\AudioVSTs\\wav\\Waltz - Percussions Section.wav")));                
-        lista.add(Player.loadMusic(new File("C:\\Users\\terro\\Desktop\\AudioVSTs\\wav\\Waltz - Harpsichord & Voice.wav")));              
-        lista.add(Player.loadMusic(new File("C:\\Users\\terro\\Desktop\\AudioVSTs\\wav\\Waltz - Strings Section.wav")));  
-        lista.add(Player.loadMusic(new File("C:\\Users\\terro\\Desktop\\AudioVSTs\\wav\\Waltz - Choirs Section.wav")));  
-        lista.add(Player.loadMusic(new File("C:\\Users\\terro\\Desktop\\AudioVSTs\\wav\\Waltz - Horns (Leads) Section.wav")));  
-        lista.add(Player.loadMusic(new File("C:\\Users\\terro\\Desktop\\AudioVSTs\\wav\\Waltz - Horns (Rythm&Chords) Section.wav")));  
-        lista.add(Player.loadMusic(new File("C:\\Users\\terro\\Desktop\\AudioVSTs\\wav\\Waltz - Winds Section.wav")));  
-        */
+        lista.add(Player.loadMusic(new File("C:\\Users\\terro\\Desktop\\AudioVSTs\\wav\\mp3\\Waltz - Percussions Section.mp3")));                
+//        lista.add(Player.loadMusic(new File("C:\\Users\\terro\\Desktop\\AudioVSTs\\wav\\Waltz - Percussions Section.wav")));                
+//        lista.add(Player.loadMusic(new File("C:\\Users\\terro\\Desktop\\AudioVSTs\\wav\\Waltz - Harpsichord & Voice.wav")));              
+//        lista.add(Player.loadMusic(new File("C:\\Users\\terro\\Desktop\\AudioVSTs\\wav\\Waltz - Strings Section.wav")));  
+//        lista.add(Player.loadMusic(new File("C:\\Users\\terro\\Desktop\\AudioVSTs\\wav\\Waltz - Choirs Section.wav")));  
+//        lista.add(Player.loadMusic(new File("C:\\Users\\terro\\Desktop\\AudioVSTs\\wav\\Waltz - Horns (Leads) Section.wav")));  
+//        lista.add(Player.loadMusic(new File("C:\\Users\\terro\\Desktop\\AudioVSTs\\wav\\Waltz - Horns (Rythm&Chords) Section.wav")));  
+//        lista.add(Player.loadMusic(new File("C:\\Users\\terro\\Desktop\\AudioVSTs\\wav\\Waltz - Winds Section.wav")));  
+        
         
         //lista.add(Player.loadMusic(new File("C:\\Users\\terro\\Downloads\\army-of-angels-1-by-johannes-bornlof-action-music.mp3")));  
     //    song1.goToSecond(150.2);
         //song1.rewindToLoopPosition();
         lista.forEach((song)->{
             song.play(false, 0.5);
-            song.goToSecond(200);
+           // song.goToSecond(200);
         });
         initComponents();
         
